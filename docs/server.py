@@ -24,6 +24,7 @@ class Handler(BaseHTTPRequestHandler):
         post_data = self.rfile.read(content_length)
         json_data = json.loads(post_data)
         q.put(json_data)
+        self._set_response()
 
     def do_OPTIONS(self):
         self._set_response()
