@@ -209,3 +209,22 @@ const startCamera = () => {
     });
     camera.start();
 };
+
+const dataFilter = (data) => {
+    return {
+        pupil : data.pupil,
+        head : {
+            y : data.y,
+            degrees : {
+                x : data.head.degrees.x,
+                y : data.head.degrees.y,
+                z : data.head.degrees.z
+            }
+        },
+        eye : data.eye,
+        mouth : {
+            x : data.mouth.x,
+            y : data.mouth.y
+        }
+    }
+}
