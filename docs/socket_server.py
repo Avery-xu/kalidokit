@@ -7,7 +7,7 @@ sio = socketio.Server(cors_allowed_origins='*')
 app = socketio.WSGIApp(sio)
 
 @sio.event
-def connect(sid):
+def connect(sid, environ, auth):
     print('connect ', sid)
 
 @sio.event
