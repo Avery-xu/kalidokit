@@ -15,12 +15,18 @@ const {
 // Url to Live2D
 const modelUrl = "../models/hiyori/hiyori_pro_t10.model3.json";
 
-let currentModel, facemesh;
+let currentModel, facemesh, socket;
 
 const videoElement = document.querySelector(".input_video"),
     guideCanvas = document.querySelector("canvas.guides");
 
 (async function main() {
+    // socket connect
+    socket = io.connect('http://localhost:80');
+    socket.on("get", (data) => {
+        rigFace(JSON.parse(data), 0.5);
+      });
+
     // create pixi application
     const app = new PIXI.Application({
         view: document.getElementById("live2d"),
@@ -80,7 +86,14 @@ const videoElement = document.querySelector(".input_video"),
     facemesh.onResults(onResults);
 
     startCamera();
+
+    // get data every 30ms
+    setInterval(getData, 30);
 })();
+
+const getData = () => {
+    socket.emit("get");
+}
 
 const onResults = (results) => {
     drawResults(results.multiFaceLandmarks[0]);
@@ -120,7 +133,8 @@ const animateLive2DModel = (points) => {
             runtime: "mediapipe",
             video: videoElement,
         });
-        rigFace(riggedFace, 0.5);
+        socket.emit("post", JSON.stringify(dataFilter(riggedFace)));
+        // rigFace(riggedFace, 0.5);
     }
 };
 
