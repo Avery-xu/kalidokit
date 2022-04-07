@@ -13,9 +13,10 @@ const {
 } = Kalidokit;
 
 // Url to Live2D
-const modelUrl = "../models/hiyori/hiyori_pro_t10.model3.json";
+const modelUrl1 = "../models/hiyori/hiyori_pro_t10.model3.json";
+const modelUrl2 = "../models/haru_greeter_pro_jp/runtime/haru_greeter_t03.model3.json";
 
-let currentModel, facemesh, socket;
+let currentModel1, currentModel2, facemesh, socket;
 
 const videoElement = document.querySelector(".input_video"),
     guideCanvas = document.querySelector("canvas.guides");
@@ -24,7 +25,7 @@ const videoElement = document.querySelector(".input_video"),
     // socket connect
     socket = io.connect('http://localhost:80');
     socket.on("get", (data) => {
-        rigFace(JSON.parse(data), 0.5);
+        rigFace(JSON.parse(data), 0.5, 2);
       });
 
     // create pixi application
@@ -37,35 +38,58 @@ const videoElement = document.querySelector(".input_video"),
     });
 
     // load live2d model
-    currentModel = await Live2DModel.from(modelUrl, { autoInteract: false });
-    currentModel.scale.set(0.4);
-    currentModel.interactive = true;
-    currentModel.anchor.set(0.5, 0.5);
-    currentModel.position.set(window.innerWidth * 0.5, window.innerHeight * 0.8);
+    currentModel1 = await Live2DModel.from(modelUrl1, { autoInteract: false });
+    currentModel1.scale.set(0.4);
+    currentModel1.interactive = true;
+    currentModel1.anchor.set(0.5, 0.5);
+    currentModel1.position.set(window.innerWidth * 0.25, window.innerHeight * 0.8);
+    currentModel2 = await Live2DModel.from(modelUrl2, { autoInteract: false });
+    currentModel2.scale.set(0.4);
+    currentModel2.interactive = true;
+    currentModel2.anchor.set(0.5, 0.5);
+    currentModel2.position.set(window.innerWidth * 0.75, window.innerHeight * 0.8);
 
     // Add events to drag model
-    currentModel.on("pointerdown", (e) => {
-        currentModel.offsetX = e.data.global.x - currentModel.position.x;
-        currentModel.offsetY = e.data.global.y - currentModel.position.y;
-        currentModel.dragging = true;
+    currentModel1.on("pointerdown", (e) => {
+        currentModel1.offsetX = e.data.global.x - currentModel1.position.x;
+        currentModel1.offsetY = e.data.global.y - currentModel1.position.y;
+        currentModel1.dragging = true;
     });
-    currentModel.on("pointerup", (e) => {
-        currentModel.dragging = false;
+    currentModel1.on("pointerup", (e) => {
+        currentModel1.dragging = false;
     });
-    currentModel.on("pointermove", (e) => {
-        if (currentModel.dragging) {
-            currentModel.position.set(e.data.global.x - currentModel.offsetX, e.data.global.y - currentModel.offsetY);
+    currentModel1.on("pointermove", (e) => {
+        if (currentModel1.dragging) {
+            currentModel1.position.set(e.data.global.x - currentModel1.offsetX, e.data.global.y - currentModel1.offsetY);
+        }
+    });
+    currentModel2.on("pointerdown", (e) => {
+        currentModel2.offsetX = e.data.global.x - currentModel2.position.x;
+        currentModel2.offsetY = e.data.global.y - currentModel2.position.y;
+        currentModel2.dragging = true;
+    });
+    currentModel2.on("pointerup", (e) => {
+        currentModel2.dragging = false;
+    });
+    currentModel2.on("pointermove", (e) => {
+        if (currentModel2.dragging) {
+            currentModel2.position.set(e.data.global.x - currentModel2.offsetX, e.data.global.y - currentModel2.offsetY);
         }
     });
 
     // Add mousewheel events to scale model
     document.querySelector("#live2d").addEventListener("wheel", (e) => {
         e.preventDefault();
-        currentModel.scale.set(clamp(currentModel.scale.x + event.deltaY * -0.001, -0.5, 10));
+        currentModel1.scale.set(clamp(currentModel1.scale.x + event.deltaY * -0.001, -0.5, 10));
+    });
+    document.querySelector("#live2d").addEventListener("wheel", (e) => {
+        e.preventDefault();
+        currentModel2.scale.set(clamp(currentModel2.scale.x + event.deltaY * -0.001, -0.5, 10));
     });
 
     // add live2d model to stage
-    app.stage.addChild(currentModel);
+    app.stage.addChild(currentModel1);
+    app.stage.addChild(currentModel2);
 
     // create media pipe facemesh instance
     facemesh = new FaceMesh({
@@ -97,7 +121,9 @@ const getData = () => {
 
 const onResults = (results) => {
     drawResults(results.multiFaceLandmarks[0]);
-    animateLive2DModel(results.multiFaceLandmarks[0]);
+    let data = solveData(results.multiFaceLandmarks[0]); 
+    sendData(dataFilter(data));
+    rigFace(data, 0.5, 1);
 };
 
 // draw connectors and landmarks on output canvas
@@ -122,24 +148,27 @@ const drawResults = (points) => {
     }
 };
 
-const animateLive2DModel = (points) => {
-    if (!currentModel || !points) return;
-
-    let riggedFace;
-
-    if (points) {
-        // use kalidokit face solver
-        riggedFace = Face.solve(points, {
+const solveData = (points) => {
+    if (!points) return;
+    return Face.solve(points, {
             runtime: "mediapipe",
             video: videoElement,
         });
-        socket.emit("post", JSON.stringify(dataFilter(riggedFace)));
-        // rigFace(riggedFace, 0.5);
-    }
 };
 
+const sendData = (data) => {
+    if (!data) return;
+    socket.emit("post", JSON.stringify(data));
+}
+
 // update live2d model internal state
-const rigFace = (result, lerpAmount = 0.7) => {
+const rigFace = (result, lerpAmount = 0.7, model = 1) => {
+    let currentModel;
+    if (model === 1) 
+        currentModel = currentModel1;
+    else 
+        currentModel = currentModel2;
+
     if (!currentModel || !result) return;
     const coreModel = currentModel.internalModel.coreModel;
 
@@ -225,6 +254,7 @@ const startCamera = () => {
 };
 
 const dataFilter = (data) => {
+    if (!data) return;
     return {
         pupil : data.pupil,
         head : {
