@@ -171,6 +171,7 @@ const rigFace = (result, lerpAmount = 0.7, model = 1) => {
 
     if (!currentModel || !result) return;
     const coreModel = currentModel.internalModel.coreModel;
+    result.head.y = result.head.degrees.y * 3.14159265358979324 / 180;
 
     currentModel.internalModel.motionManager.update = (...args) => {
         // disable default blink animation
@@ -258,7 +259,6 @@ const dataFilter = (data) => {
     return {
         pupil : data.pupil,
         head : {
-            y : data.y,
             degrees : {
                 x : data.head.degrees.x,
                 y : data.head.degrees.y,
