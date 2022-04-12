@@ -23,7 +23,7 @@ const videoElement = document.querySelector(".input_video"),
 
 (async function main() {
     // socket connect
-    socket = io.connect('http://localhost:80');
+    socket = io.connect('http://localhost:8080');
     socket.on("get", (data) => {
         rigFace(JSON.parse(data), 0.5, 2);
       });
